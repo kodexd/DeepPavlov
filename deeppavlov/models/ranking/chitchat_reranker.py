@@ -71,9 +71,9 @@ class ChitChatReRanker(Component):
 
             filtered_intents_idx = [j for j in range(len(top_responses_batch[i]))]
             if last_utter_intent == "interrogative":
-                filtered_intents_idx = [j for j in range(len(top_responses_batch[i])) if responses_intents[j] in ["declarative", "imperative"]]
-            elif last_utter_intent == "imperative":
                 filtered_intents_idx = [j for j in range(len(top_responses_batch[i])) if responses_intents[j] in ["declarative"]]
+            elif last_utter_intent == "imperative":
+                filtered_intents_idx = [j for j in range(len(top_responses_batch[i])) if responses_intents[j] in ["interrogative", "declarative"]]
 
             # filter by sentiment
             # negative -> neutral, neutral -> positive
@@ -89,7 +89,7 @@ class ChitChatReRanker(Component):
                                           responses_sentiment[j] not in ["negative", "skip"]]
             elif last_utter_sentiment == "neutral":
                 filtered_sentiment_idx = [j for j in range(len(top_responses_batch[i])) if
-                                          responses_sentiment[j] in ["neutral", "positive"]]  # may be positive only
+                                          responses_sentiment[j] in ["neutral", "positive"]]  # may be positive only,   not ["neutral", "positive"]
             elif last_utter_sentiment == "speech":
                 filtered_sentiment_idx = [j for j in range(len(top_responses_batch[i])) if
                                           responses_sentiment[j] == "speech"]
@@ -100,35 +100,49 @@ class ChitChatReRanker(Component):
             print("[debug]: \intents/ [last]", last_utter_intent, "[idx]", filtered_intents_idx,
                   "|| \sentiment/ [last]", last_utter_sentiment, "[idx]", filtered_sentiment_idx)
 
-            idx = list(set(filtered_intents_idx).intersection(set(filtered_sentiment_idx)))
+            # Special cases
+            # 1. Negative + imperative -> sad :-(
+            if last_utter_intent == "imperative" and last_utter_sentiment == "negative":
+                filtered_intents_idx = [j for j in range(len(top_responses_batch[i])) if responses_intents[j] in ["interrogative"]]
+
+            # Format output
+            idx = sorted(list(set(filtered_intents_idx).intersection(set(filtered_sentiment_idx))))
             print("[idx]: ", idx)
             if len(idx) > 0:
                 # use sentiment + intents
-                candidates = [top_responses_batch[i][j] for j in idx]
-                scores = [top_scores_batch[i][j] for j in idx]
+                pass
             elif len(filtered_sentiment_idx):
                 # use sentiment only
-                candidates = [top_responses_batch[i][j] for j in filtered_sentiment_idx]
-                scores = [top_scores_batch[i][j] for j in filtered_sentiment_idx]
+                idx = filtered_sentiment_idx
             elif len(filtered_intents_idx):
                 # use intents only
-                candidates = [top_responses_batch[i][j] for j in filtered_intents_idx]
-                scores = [top_scores_batch[i][j] for j in filtered_intents_idx]
+                idx = filtered_intents_idx
             else:
                 # fallback, use flat candidates as are
-                candidates = top_responses_batch[i]
-                scores = top_scores_batch[i]
+                idx = [k for k in range(len(top_responses_batch[i]))]
+
+            candidates = [top_responses_batch[i][j] for j in idx]
+            scores = [top_scores_batch[i][j] for j in idx]
+
             print("[candidates]: ", candidates)
 
-            i = np.arange(len(candidates))
-            w = np.exp(-i / self.lambda_coeff)
+            pcount = np.arange(len(candidates))
+            w = np.exp(-pcount / self.lambda_coeff)
             w = w / w.sum()
             # print("distribution:", w)  # DEBUG
 
-            chosen_index = np.random.choice([k for k in range(len(candidates))], p=w)
-            print("[answer]: ", candidates[chosen_index])
+            chosen_index = np.random.choice(idx, p=w)
+            print("[chosen_index]", chosen_index)
+            print("[answer]: ", top_responses_batch[i][chosen_index])
 
-            responses_batch.append(candidates[chosen_index])
-            responses_preds.append(scores[chosen_index])
+            to_output = top_responses_batch[i][chosen_index]
+            if last_utter_sentiment in ["negative"]:
+                to_output += " 😔 ..."
+            if responses_sentiment[chosen_index] in ["positive"]:
+                if np.random.random() < 0.5:          # append smile with prob=0.5 when the answer is positive
+                    to_output += " 😊"
+
+            responses_batch.append(to_output)
+            responses_preds.append(top_scores_batch[i][chosen_index])
 
         return responses_batch, responses_preds

@@ -95,7 +95,7 @@
         "info": "5. Return actual response",
         "class_name": "hybrid_ranker_predictor",
         "return_topn": true,
-        "topn": 15,
+        "topn": 17,
         "in": ["response_candidates", "y_predicted"],
         "out": ["topn_responses", "topn_responses_scores"]
       },
@@ -242,7 +242,7 @@
       {
         "info": "10. Final reranker",
         "class_name": "chitchat_reranker",
-        "lambda_coeff": 10.0,
+        "lambda_coeff": 5.0,
         "in": ["topn_responses", "topn_responses_scores", "y_pred_labels_sentiment", "y_pred_labels_intents"],
         "out": ["best_responses", "response_preds"]
       }
@@ -268,8 +268,24 @@
     },
     "download": [
       {
+        "info": "1. Responses ranking model",
         "url": "http://files.deeppavlov.ai/deeppavlov_data/dev/chitchat_2staged_tfidf_smn_v17.tar.gz",
         "subdir": "{MODELS_PATH}"
+      },
+      {
+        "info": "2. Sentiment classification model",
+        "url": "http://files.deeppavlov.ai/deeppavlov_data/classifiers/rusentiment_v3.tar.gz",
+        "subdir": "{ROOT_PATH}/models/classifiers"
+      },
+      {
+        "info": "3. Intent classification model",
+        "url": "http://files.deeppavlov.ai/deeppavlov_data/dev/deeppavlov_intents_cnn.tar.gz",
+        "subdir": "{ROOT_PATH}/models/classifiers"
+      },
+      {
+        "info": "FastText embeddings",
+        "url": "http://files.deeppavlov.ai/embeddings/ft_native_300_ru_wiki_lenta_nltk_wordpunct_tokenize/ft_native_300_ru_wiki_lenta_nltk_wordpunct_tokenize.bin",
+        "subdir": "{DOWNLOADS_PATH}/embeddings"
       }
     ]
   }
