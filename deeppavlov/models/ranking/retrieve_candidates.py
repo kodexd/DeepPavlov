@@ -65,7 +65,7 @@ class RetrieveCandidates(Component):
                 context_batch[i] = [''] * (self.num_context_turns - 1) +\
                                    ['Давай подумаем над этим вместе, я пока не на все вопросы умею отвечать.']
 
-            item = context_batch[i]
+            item = list(context_batch[i])
             item.extend(candidates_batch[i])  # append several response candidates to the each context
             model_inputs.append(item)
 
